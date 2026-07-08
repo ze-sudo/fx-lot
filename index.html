@@ -273,7 +273,7 @@
       </div>
     </div>
 
-    <div class="field hidden" id="contractField">
+    <div class="field" id="contractField">
       <label>コントラクトサイズ（1lotあたり）<span class="hint">業者の仕様書で確認</span></label>
       <div class="input-row">
         <select id="contract">
@@ -309,106 +309,115 @@
 
 <script>
   // ── Pair definitions ──────────────────────────────────────────────────────
+  //
+  // 損切り幅はチャートで読める値そのまま（quote通貨建ての価格差）。
+  //   USD-quoted (XAUUSD, AUDUSD, EURUSD, GBPUSD): ドル (USD)
+  //   JPY-quoted (USDJPY): 円 (JPY)
+  //
+  // 統一計算式:
+  //   USD-quoted: ロット = (残高×リスク%) ÷ レート ÷ (損切り幅 × コントラクトサイズ)
+  //   JPY-quoted: ロット = (残高×リスク%) ÷ (損切り幅 × コントラクトサイズ)
+
   const PAIRS = {
     XAUUSD: {
       stopDefault: 5,
       stopStep: 0.1,
+      stopDecimals: 2,
       stopUnit: 'ドル',
       stopHint: 'エントリー価格 − 損切り価格 (USD)',
       showRate: true,
-      showContract: true,
+      quoteJpy: false,
       showUsdStat: true,
-      formula: 'ロット = (口座残高 × リスク%) ÷ レート ÷ (損切り幅USD × コントラクトサイズ)',
-      calc(balance, riskPct, stopVal, rate, contract) {
-        const riskJpy = balance * (riskPct / 100);
-        const riskUsd = rate > 0 ? riskJpy / rate : 0;
-        const lot = (stopVal > 0 && contract > 0) ? riskUsd / (stopVal * contract) : 0;
-        return { lot, riskJpy, riskUsd };
-      },
+      contracts: [
+        { label: '標準 — 100 oz / lot', value: 100 },
+        { label: 'ミニ   — 10 oz / lot', value: 10 },
+        { label: 'マイクロ —  1 oz / lot', value: 1 },
+      ],
+      formula: 'ロット = (口座残高 × リスク%) ÷ レート(USDJPY) ÷ (損切り幅USD × コントラクトサイズ)',
     },
     AUDUSD: {
-      stopDefault: 20,
-      stopStep: 1,
-      stopUnit: 'pips',
-      stopHint: '1pip = 0.0001 ／ 標準ロット $10/pip',
+      stopDefault: 0.0020,
+      stopStep: 0.0001,
+      stopDecimals: 4,
+      stopUnit: 'ドル',
+      stopHint: 'エントリー価格 − 損切り価格 (USD)　例: 20pips = 0.0020',
       showRate: true,
-      showContract: false,
+      quoteJpy: false,
       showUsdStat: true,
-      formula: 'ロット = (口座残高 × リスク%) ÷ レート ÷ (損切りpips × $10)',
-      calc(balance, riskPct, stopVal, rate) {
-        const riskJpy = balance * (riskPct / 100);
-        const riskUsd = rate > 0 ? riskJpy / rate : 0;
-        const lot = (stopVal > 0 && rate > 0) ? riskUsd / (stopVal * 10) : 0;
-        return { lot, riskJpy, riskUsd };
-      },
+      contracts: [
+        { label: '標準 — 100,000 AUD / lot', value: 100000 },
+        { label: 'ミニ   —  10,000 AUD / lot', value: 10000 },
+        { label: 'マイクロ —   1,000 AUD / lot', value: 1000 },
+      ],
+      formula: 'ロット = (口座残高 × リスク%) ÷ レート(USDJPY) ÷ (損切り幅USD × コントラクトサイズ)',
     },
     EURUSD: {
-      stopDefault: 20,
-      stopStep: 1,
-      stopUnit: 'pips',
-      stopHint: '1pip = 0.0001 ／ 標準ロット $10/pip',
+      stopDefault: 0.0020,
+      stopStep: 0.0001,
+      stopDecimals: 4,
+      stopUnit: 'ドル',
+      stopHint: 'エントリー価格 − 損切り価格 (USD)　例: 20pips = 0.0020',
       showRate: true,
-      showContract: false,
+      quoteJpy: false,
       showUsdStat: true,
-      formula: 'ロット = (口座残高 × リスク%) ÷ レート ÷ (損切りpips × $10)',
-      calc(balance, riskPct, stopVal, rate) {
-        const riskJpy = balance * (riskPct / 100);
-        const riskUsd = rate > 0 ? riskJpy / rate : 0;
-        const lot = (stopVal > 0 && rate > 0) ? riskUsd / (stopVal * 10) : 0;
-        return { lot, riskJpy, riskUsd };
-      },
+      contracts: [
+        { label: '標準 — 100,000 EUR / lot', value: 100000 },
+        { label: 'ミニ   —  10,000 EUR / lot', value: 10000 },
+        { label: 'マイクロ —   1,000 EUR / lot', value: 1000 },
+      ],
+      formula: 'ロット = (口座残高 × リスク%) ÷ レート(USDJPY) ÷ (損切り幅USD × コントラクトサイズ)',
     },
     GBPUSD: {
-      stopDefault: 30,
-      stopStep: 1,
-      stopUnit: 'pips',
-      stopHint: '1pip = 0.0001 ／ 標準ロット $10/pip',
+      stopDefault: 0.0030,
+      stopStep: 0.0001,
+      stopDecimals: 4,
+      stopUnit: 'ドル',
+      stopHint: 'エントリー価格 − 損切り価格 (USD)　例: 30pips = 0.0030',
       showRate: true,
-      showContract: false,
+      quoteJpy: false,
       showUsdStat: true,
-      formula: 'ロット = (口座残高 × リスク%) ÷ レート ÷ (損切りpips × $10)',
-      calc(balance, riskPct, stopVal, rate) {
-        const riskJpy = balance * (riskPct / 100);
-        const riskUsd = rate > 0 ? riskJpy / rate : 0;
-        const lot = (stopVal > 0 && rate > 0) ? riskUsd / (stopVal * 10) : 0;
-        return { lot, riskJpy, riskUsd };
-      },
+      contracts: [
+        { label: '標準 — 100,000 GBP / lot', value: 100000 },
+        { label: 'ミニ   —  10,000 GBP / lot', value: 10000 },
+        { label: 'マイクロ —   1,000 GBP / lot', value: 1000 },
+      ],
+      formula: 'ロット = (口座残高 × リスク%) ÷ レート(USDJPY) ÷ (損切り幅USD × コントラクトサイズ)',
     },
     USDJPY: {
-      stopDefault: 30,
-      stopStep: 1,
-      stopUnit: 'pips',
-      stopHint: '1pip = 0.01円 ／ 標準ロット ¥1,000/pip',
+      stopDefault: 0.30,
+      stopStep: 0.01,
+      stopDecimals: 2,
+      stopUnit: '円',
+      stopHint: 'エントリー価格 − 損切り価格 (円)　例: 30pips = 0.30',
       showRate: false,
-      showContract: false,
+      quoteJpy: true,
       showUsdStat: false,
-      formula: 'ロット = (口座残高 × リスク%) ÷ (損切りpips × ¥1,000)　※円建て計算のためレート不要',
-      calc(balance, riskPct, stopVal) {
-        const riskJpy = balance * (riskPct / 100);
-        const lot = stopVal > 0 ? riskJpy / (stopVal * 1000) : 0;
-        return { lot, riskJpy, riskUsd: 0 };
-      },
+      contracts: [
+        { label: '標準 — 100,000 USD / lot', value: 100000 },
+        { label: 'ミニ   —  10,000 USD / lot', value: 10000 },
+        { label: 'マイクロ —   1,000 USD / lot', value: 1000 },
+      ],
+      formula: 'ロット = (口座残高 × リスク%) ÷ (損切り幅円 × コントラクトサイズ)　※円建てのためレート不要',
     },
   };
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
-  const balanceEl    = document.getElementById('balance');
-  const riskPctEl    = document.getElementById('riskPct');
-  const stopValEl    = document.getElementById('stopVal');
-  const stopHintEl   = document.getElementById('stopHint');
-  const stopUnitEl   = document.getElementById('stopUnit');
-  const rateEl       = document.getElementById('rate');
-  const contractEl   = document.getElementById('contract');
-  const rateField    = document.getElementById('rateField');
-  const contractField = document.getElementById('contractField');
-  const riskUsdStat  = document.getElementById('riskUsdStat');
-  const breakdown    = document.getElementById('breakdown');
-  const lotOut       = document.getElementById('lotOut');
-  const gaugeFill    = document.getElementById('gaugeFill');
-  const riskJpyOut   = document.getElementById('riskJpyOut');
-  const riskUsdOut   = document.getElementById('riskUsdOut');
-  const warnBox      = document.getElementById('warnBox');
-  const noteBox      = document.getElementById('noteBox');
+  const balanceEl     = document.getElementById('balance');
+  const riskPctEl     = document.getElementById('riskPct');
+  const stopValEl     = document.getElementById('stopVal');
+  const stopHintEl    = document.getElementById('stopHint');
+  const stopUnitEl    = document.getElementById('stopUnit');
+  const rateEl        = document.getElementById('rate');
+  const contractEl    = document.getElementById('contract');
+  const rateField     = document.getElementById('rateField');
+  const riskUsdStat   = document.getElementById('riskUsdStat');
+  const breakdown     = document.getElementById('breakdown');
+  const lotOut        = document.getElementById('lotOut');
+  const gaugeFill     = document.getElementById('gaugeFill');
+  const riskJpyOut    = document.getElementById('riskJpyOut');
+  const riskUsdOut    = document.getElementById('riskUsdOut');
+  const warnBox       = document.getElementById('warnBox');
+  const noteBox       = document.getElementById('noteBox');
 
   let currentPair = 'XAUUSD';
 
@@ -425,17 +434,25 @@
     currentPair = pair;
     const cfg = PAIRS[pair];
 
-    stopValEl.value = cfg.stopDefault;
+    // Stop loss field
+    stopValEl.value = cfg.stopDefault.toFixed(cfg.stopDecimals);
     stopValEl.step  = cfg.stopStep;
     stopUnitEl.textContent = cfg.stopUnit;
     stopHintEl.textContent = cfg.stopHint;
 
+    // Rate field visibility
     rateField.classList.toggle('hidden', !cfg.showRate);
-    contractField.classList.toggle('hidden', !cfg.showContract);
 
+    // Contract size options
+    contractEl.innerHTML = cfg.contracts
+      .map(c => `<option value="${c.value}">${c.label}</option>`)
+      .join('');
+
+    // USD stat visibility
     riskUsdStat.style.display = cfg.showUsdStat ? '' : 'none';
     breakdown.style.gridTemplateColumns = cfg.showUsdStat ? '1fr 1fr' : '1fr';
 
+    // Formula note
     noteBox.innerHTML =
       '<b>計算式：</b>' + cfg.formula +
       '<br>値は目安です。最小ロット刻み（多くは0.01）、証拠金維持率、スプレッドは反映していません。取引前にブローカーの契約仕様をご確認ください。';
@@ -445,13 +462,25 @@
 
   // ── Calc ──────────────────────────────────────────────────────────────────
   function calc() {
+    const cfg      = PAIRS[currentPair];
     const balance  = parseFloat(balanceEl.value)  || 0;
     const riskPct  = parseFloat(riskPctEl.value)  || 0;
     const stopVal  = parseFloat(stopValEl.value)  || 0;
     const rate     = parseFloat(rateEl.value)     || 0;
-    const contract = parseFloat(contractEl.value) || 100;
+    const contract = parseFloat(contractEl.value) || cfg.contracts[0].value;
 
-    const { lot, riskJpy, riskUsd } = PAIRS[currentPair].calc(balance, riskPct, stopVal, rate, contract);
+    const riskJpy = balance * (riskPct / 100);
+    let riskUsd = 0;
+    let lot = 0;
+
+    if (cfg.quoteJpy) {
+      // USDJPY: quote通貨が円 → 円建てで直接計算
+      lot = (stopVal > 0 && contract > 0) ? riskJpy / (stopVal * contract) : 0;
+    } else {
+      // USD-quoted: 円リスクをドルに換算してから計算
+      riskUsd = rate > 0 ? riskJpy / rate : 0;
+      lot = (stopVal > 0 && contract > 0 && rate > 0) ? riskUsd / (stopVal * contract) : 0;
+    }
 
     riskJpyOut.textContent = '¥' + fmt(riskJpy, 0);
     riskUsdOut.textContent = '$' + fmt(riskUsd, 2);
