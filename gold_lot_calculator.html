@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>XAUUSD ロットサイズ計算機</title>
+<style>
+  :root{
+    --bg: #0B0D10;
+    --panel: #14171C;
+    --panel-2: #1B1F26;
+    --line: #262B33;
+    --gold: #C9A227;
+    --gold-bright: #E4C558;
+    --text: #E8E6E1;
+    --muted: #8B8F98;
+    --danger: #E5484D;
+    --safe: #4FD1C5;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    padding: 32px 16px;
+    min-height: 100vh;
+  }
+  .wrap{
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .eyebrow{
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    color: var(--gold);
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  h1{
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.01em;
+  }
+  .sub{
+    color: var(--muted);
+    font-size: 13.5px;
+    margin: 0 0 28px 0;
+    line-height: 1.6;
+  }
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--gold);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .field{ margin-bottom: 18px; }
+  .field:last-child{ margin-bottom: 0; }
+  label{
+    display:flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 7px;
+  }
+  label .hint{ font-size: 11px; color: #5C6069; }
+  .input-row{
+    display:flex;
+    align-items:center;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0 12px;
+    transition: border-color .15s;
+  }
+  .input-row:focus-within{ border-color: var(--gold); }
+  .input-row .unit{
+    color: var(--muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    padding-left: 8px;
+  }
+  input[type=number], select{
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 17px;
+    padding: 11px 0;
+    width: 100%;
+  }
+  select{ cursor:pointer; }
+  select option{ background: var(--panel-2); color: var(--text); }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+
+  .result-card{
+    background: linear-gradient(155deg, #1B1710 0%, #14171C 55%);
+    border: 1px solid #3A2F14;
+    border-radius: 10px;
+    padding: 26px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .result-label{
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .result-lot{
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 52px;
+    font-weight: 700;
+    color: var(--gold-bright);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .result-lot span{ font-size: 20px; color: var(--muted); font-weight: 500; margin-left: 6px; }
+
+  .gauge{
+    height: 8px;
+    border-radius: 4px;
+    background: var(--panel-2);
+    margin: 18px 0 16px 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .gauge-fill{
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold) 0%, var(--gold-bright) 100%);
+    width: 0%;
+    transition: width .25s ease;
+  }
+
+  .breakdown{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .stat{
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .stat .k{ font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .stat .v{
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 15px;
+    color: var(--text);
+  }
+
+  .note{
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .note b{ color: #B8BBC2; }
+
+  .warn{
+    display:none;
+    align-items: flex-start;
+    gap: 8px;
+    background: rgba(229,72,77,0.08);
+    border: 1px solid rgba(229,72,77,0.35);
+    color: #F0A5A7;
+    font-size: 12.5px;
+    line-height: 1.6;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 16px;
+  }
+  .warn.show{ display:flex; }
+
+  @media (max-width: 480px){
+    .result-lot{ font-size: 42px; }
+    .breakdown{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Risk Sizing</div>
+  <h1>XAUUSD ロットサイズ計算機</h1>
+  <p class="sub">口座残高・許容リスク・損切り幅から、そのトレードで取るべきロット数を逆算します。数値を入力すると自動で更新されます。</p>
+
+  <div class="card">
+    <div class="field">
+      <label>口座残高<span class="hint">JPY</span></label>
+      <div class="input-row">
+        <input type="number" id="balance" value="1000000" min="0" step="1000">
+        <span class="unit">円</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>1トレードの損失上限<span class="hint">推奨: 0.5〜2%</span></label>
+      <div class="input-row">
+        <input type="number" id="riskPct" value="1" min="0" step="0.1">
+        <span class="unit">%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>損切り位置までの値幅<span class="hint">エントリー価格 − 損切り価格</span></label>
+      <div class="input-row">
+        <input type="number" id="stopUsd" value="5" min="0" step="0.1">
+        <span class="unit">ドル</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>USD/JPY レート</label>
+      <div class="input-row">
+        <input type="number" id="rate" value="162.4" min="0" step="0.01">
+        <span class="unit">円</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>コントラクトサイズ（1lotあたり）<span class="hint">業者の仕様書で確認</span></label>
+      <div class="input-row">
+        <select id="contract">
+          <option value="100" selected>標準 — 100oz / lot</option>
+          <option value="10">ミニ — 10oz / lot</option>
+          <option value="1">マイクロ — 1oz / lot</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-card">
+    <div class="result-label">推奨ロット数</div>
+    <div class="result-lot" id="lotOut">0.00<span>lot</span></div>
+    <div class="gauge"><div class="gauge-fill" id="gaugeFill"></div></div>
+
+    <div class="breakdown">
+      <div class="stat">
+        <div class="k">許容損失額（円）</div>
+        <div class="v" id="riskJpyOut">¥0</div>
+      </div>
+      <div class="stat">
+        <div class="k">許容損失額（ドル）</div>
+        <div class="v" id="riskUsdOut">$0.00</div>
+      </div>
+    </div>
+
+    <div class="warn" id="warnBox"></div>
+
+    <div class="note">
+      <b>計算式：</b> ロット = (口座残高 × リスク%) ÷ レート ÷ (損切り幅USD × コントラクトサイズ)<br>
+      値は目安です。実際の最小ロット刻み（多くは0.01）、証拠金維持率、スプレッドは反映していません。取引前にブローカーの契約仕様をご確認ください。
+    </div>
+  </div>
+</div>
+
+<script>
+  const balanceEl = document.getElementById('balance');
+  const riskPctEl = document.getElementById('riskPct');
+  const stopUsdEl = document.getElementById('stopUsd');
+  const rateEl = document.getElementById('rate');
+  const contractEl = document.getElementById('contract');
+
+  const lotOut = document.getElementById('lotOut');
+  const gaugeFill = document.getElementById('gaugeFill');
+  const riskJpyOut = document.getElementById('riskJpyOut');
+  const riskUsdOut = document.getElementById('riskUsdOut');
+  const warnBox = document.getElementById('warnBox');
+
+  function fmt(n, digits){
+    return Number(n).toLocaleString('ja-JP', {minimumFractionDigits: digits, maximumFractionDigits: digits});
+  }
+
+  function calc(){
+    const balance = parseFloat(balanceEl.value) || 0;
+    const riskPct = parseFloat(riskPctEl.value) || 0;
+    const stopUsd = parseFloat(stopUsdEl.value) || 0;
+    const rate = parseFloat(rateEl.value) || 0;
+    const contract = parseFloat(contractEl.value) || 100;
+
+    const riskJpy = balance * (riskPct / 100);
+    const riskUsd = rate > 0 ? riskJpy / rate : 0;
+    let lot = (stopUsd > 0 && contract > 0) ? riskUsd / (stopUsd * contract) : 0;
+
+    riskJpyOut.textContent = '¥' + fmt(riskJpy, 0);
+    riskUsdOut.textContent = '$' + fmt(riskUsd, 2);
+
+    const lotRounded = Math.floor(lot * 100) / 100; // 0.01刻みに切り下げ
+    lotOut.innerHTML = fmt(lotRounded, 2) + '<span>lot</span>';
+
+    // gauge: visualize relative to an arbitrary reference of 5.0 lot as "full"
+    const pct = Math.min((lotRounded / 5) * 100, 100);
+    gaugeFill.style.width = pct + '%';
+
+    warnBox.classList.remove('show');
+    warnBox.innerHTML = '';
+    if (stopUsd <= 0) {
+      warnBox.innerHTML = '⚠ 損切り幅を入力してください。';
+      warnBox.classList.add('show');
+    } else if (lotRounded < 0.01) {
+      warnBox.innerHTML = '⚠ 計算上のロットが最小取引単位（0.01lot）を下回っています。この条件では推奨ポジションサイズを取れません。リスク%を上げるか、損切り幅を狭めるか検討してください。';
+      warnBox.classList.add('show');
+    } else if (lotRounded >= 5) {
+      warnBox.innerHTML = '⚠ ロット数がかなり大きくなっています。証拠金維持率とレバレッジ上限を必ず確認してください。';
+      warnBox.classList.add('show');
+    }
+  }
+
+  [balanceEl, riskPctEl, stopUsdEl, rateEl, contractEl].forEach(el => {
+    el.addEventListener('input', calc);
+    el.addEventListener('change', calc);
+  });
+
+  calc();
+</script>
+</body>
+</html>
